@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Arcade</title>
+<style>
+  :root { box-sizing:border-box; color-scheme:dark; --bg:#1b1c1e; --card:#2d2e31; --hi:#47494e; --text:#ececee; --muted:#7d7f85; --topnav-h:max(5vh,52px); --good:#7fd69a; --bad:#e08a8a; }
+  *, *::before, *::after { box-sizing:border-box; }
+  html { height:100%; }
+  body { margin:0; min-height:100%; background:var(--bg); color:var(--text); font-family:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+    padding:calc(var(--topnav-h) + env(safe-area-inset-top,0px) + 24px) 20px 130px; }
+  button, input { font:inherit; color:inherit; }
+  .topnav { position:fixed; top:0; left:0; right:0; z-index:3; height:calc(var(--topnav-h) + env(safe-area-inset-top,0px)); padding:env(safe-area-inset-top,0px) 18px 0; background:darkgrey; color:#1b1c1e; display:flex; align-items:center; justify-content:space-between; font-weight:600; }
+  .bal { display:flex; align-items:center; gap:6px; font-variant-numeric:tabular-nums; } .bal svg { width:18px; height:18px; }
+  .tabs { position:fixed; z-index:2; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom,0px) + 24px); display:inline-flex; gap:2px; padding:5px; border-radius:999px; background:var(--card); box-shadow:0 8px 24px rgba(0,0,0,.3); }
+  .indicator { position:absolute; top:5px; bottom:5px; left:0; width:0; border-radius:999px; pointer-events:none; background:var(--hi); transition:transform .35s cubic-bezier(.3,.9,.3,1), width .35s cubic-bezier(.3,.9,.3,1); }
+  .tab { position:relative; z-index:1; width:48px; height:44px; display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:999px; background:transparent; color:var(--muted); cursor:pointer; transition:color .2s; }
+  .tab svg { width:20px; height:20px; stroke-width:1.7; } .tab:hover { color:#c9cbd0; } .tab[aria-selected="true"] { color:var(--text); }
+  :focus-visible { outline:2px solid rgba(255,255,255,.55); outline-offset:2px; }
+  .panels { width:min(420px,100%); margin:0 auto; text-align:center; }
+  .panel { display:none; } .panel.on { display:block; animation:swap .25s ease; }
+  @keyframes swap { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+  h2 { margin:0 0 6px; font-size:20px; font-weight:600; letter-spacing:-.01em; }
+  p { margin:0; color:var(--muted); line-height:1.6; font-size:14px; }
+  input[type=text] { width:100%; padding:12px 16px; border-radius:999px; border:0; background:var(--card); margin-bottom:16px; } input::placeholder { color:var(--muted); }
+  .grid { display:grid; gap:10px; }
+  .card { display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:18px; background:var(--card); border:0; width:100%; text-align:left; cursor:pointer; } .card:hover { background:#333539; }
+  .ico { width:42px; height:42px; border-radius:50%; background:var(--hi); display:grid; place-items:center; flex:none; font-size:20px; }
+  .card b { display:block; font-weight:600; font-size:15px; } .card span { color:var(--muted); font-size:13px; }
+  .btn { padding:10px 18px; border-radius:999px; border:0; background:var(--hi); cursor:pointer; font-weight:500; } .btn:hover { background:#55575d; } .btn:disabled { opacity:.4; cursor:default; }
+  .list { text-align:left; display:grid; gap:8px; } .row { display:flex; justify-content:space-between; padding:12px 16px; border-radius:14px; background:var(--card); font-size:14px; }
+  .good { color:var(--good); } .bad { color:var(--bad); }
+  .stats { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:16px 0; } .stat { padding:14px; border-radius:16px; background:var(--card); } .stat b { display:block; font-size:20px; } .stat span { font-size:12px; color:var(--muted); }
+  .wheelwrap { position:relative; width:250px; height:250px; margin:18px auto 20px; }
+  .wheel { position:absolute; inset:0; border-radius:50%; border:4px solid var(--card); transition:transform 4s cubic-bezier(.12,.7,.1,1); }
+  .lab { position:absolute; left:50%; top:50%; font-weight:600; font-size:15px; }
+  .ptr { position:absolute; z-index:2; top:-8px; left:50%; transform:translateX(-50%); border:10px solid transparent; border-top:20px solid var(--text); border-bottom:0; }
+  .hub { position:absolute; z-index:1; left:50%; top:50%; width:28px; height:28px; margin:-14px; border-radius:50%; background:var(--bg); border:4px solid var(--card); }
+  .overlay { position:fixed; inset:0; z-index:5; background:rgba(10,10,11,.6); display:none; align-items:center; justify-content:center; padding:20px; } .overlay.on { display:flex; }
+  .sheet { width:min(380px,100%); background:var(--card); border-radius:24px; padding:22px; text-align:center; }
+  .head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; } .head h2 { margin:0; } .x { border:0; background:transparent; color:var(--muted); cursor:pointer; padding:4px; display:grid; }
+  .chips { display:flex; gap:6px; justify-content:center; margin-bottom:18px; } .chip { padding:7px 14px; border-radius:999px; border:0; background:var(--bg); color:var(--muted); cursor:pointer; font-size:13px; } .chip.on { background:var(--hi); color:var(--text); }
+  .stage { min-height:170px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; }
+  .msg { min-height:22px; font-size:14px; } .btns { display:flex; gap:10px; } .hint { font-size:12px; margin-top:12px; }
+  .reels { display:flex; gap:10px; } .reel { width:70px; height:80px; border-radius:16px; background:var(--bg); display:grid; place-items:center; font-size:36px; }
+  .mgrid { display:grid; grid-template-columns:repeat(4,56px); gap:8px; }
+  .tile { width:56px; height:56px; border-radius:14px; border:0; background:var(--bg); font-size:22px; cursor:pointer; } .tile:hover:not(:disabled) { background:var(--hi); } .tile.safe { background:#2f5a3e; } .tile.bomb { background:#6a3a3a; }
+  .face { width:90px; height:124px; border-radius:14px; background:var(--text); color:#1b1c1e; display:grid; place-items:center; font-size:44px; font-weight:700; }
+  .track { position:relative; width:100%; height:42px; background:var(--bg); border-radius:12px; overflow:hidden; }
+  .zone { position:absolute; top:0; bottom:0; left:50%; transform:translateX(-50%); } .mark { position:absolute; top:0; bottom:0; width:4px; background:#fff; margin-left:-2px; }
+  .cups { position:relative; width:288px; height:100px; } .cw { position:absolute; left:0; top:0; width:96px; height:100px; border:0; background:none; display:grid; place-items:center; cursor:pointer; transition:transform .35s ease; }
+  .cup { font-size:56px; transition:transform .25s; } .cw.lift .cup { transform:translateY(-36px); } .ball { position:absolute; bottom:8px; font-size:22px; opacity:0; } .cw.show .ball { opacity:1; }
+  .field { display:block; width:100%; max-width:320px; aspect-ratio:320/400; border-radius:16px; background:#2f5a3e; touch-action:none; cursor:crosshair; }
+  .overlay.full { padding:0; background:var(--bg); }
+  .overlay.full .sheet { width:100%; height:100%; border-radius:0; background:var(--bg); display:flex; flex-direction:column; padding:calc(env(safe-area-inset-top,0px) + 14px) 14px calc(env(safe-area-inset-bottom,0px) + 14px); }
+  .overlay.full .stage { flex:1; min-height:0; width:100%; }
+  .overlay.full .field { max-width:none; aspect-ratio:auto; flex:1; min-height:0; width:100%; }
+  .banner { position:relative; overflow:hidden; display:block; min-height:96px; padding:18px 20px; color:#fff; box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); transition:filter .2s, transform .2s; }
+  .banner:hover { filter:brightness(1.12); transform:translateY(-1px); }
+  .banner.feat { min-height:132px; }
+  .banner b { font-size:18px; letter-spacing:-.01em; } .banner.feat b { font-size:22px; }
+  .banner small { display:block; color:rgba(255,255,255,.78); font-size:13px; margin-top:2px; max-width:70%; }
+  .banner .big { position:absolute; right:-4px; bottom:-16px; font-size:96px; line-height:1; color:#fff; opacity:.3; transform:rotate(-12deg); transition:transform .3s; }
+  .banner.feat .big { font-size:124px; } .banner:hover .big { transform:rotate(0) scale(1.08); }
+  .banner .tag { display:inline-block; margin-top:12px; padding:4px 12px; border-radius:999px; background:rgba(255,255,255,.16); font-size:12px; font-weight:600; color:#fff; }
+  .overlay.full .head h2 { font-size:15px; letter-spacing:.12em; text-transform:uppercase; }
+  .overlay.full .field { box-shadow:0 0 0 1px rgba(255,255,255,.08), 0 14px 50px rgba(0,0,0,.6); }
+  @media (prefers-reduced-motion:reduce) { .indicator, .panel.on, .wheel, .cw { transition:none; animation:none; } }
+</style>
+</head>
+<body>
+<div class="topnav"><span>Arcade</span><span class="bal"><i data-lucide="wallet"></i><span id="bal">$0.00</span></span></div>
+
+<main class="panels">
+  <section class="panel" id="p-home" role="tabpanel" aria-labelledby="t-home">
+    <h2>Recent</h2><p style="margin-bottom:16px">Your latest plays.</p><div class="list" id="hist"></div>
+  </section>
+  <section class="panel on" id="p-explore" role="tabpanel" aria-labelledby="t-explore">
+    <input type="text" id="q" placeholder="Search games..." aria-label="Search games" />
+    <div class="grid" id="games"></div>
+  </section>
+  <section class="panel" id="p-saved" role="tabpanel" aria-labelledby="t-saved">
+    <h2>Daily Wheel</h2><p>Win $0.10 to $0.50. Five spins, refilled every 3 hours.</p>
+    <div class="wheelwrap"><div class="ptr"></div><div class="wheel" id="wheel"></div><div class="hub"></div></div>
+    <button class="btn" id="spinw">Spin</button>
+    <p id="spinfo" style="margin-top:12px"></p><p id="wmsg" style="min-height:22px;color:var(--text)"></p>
+  </section>
+  <section class="panel" id="p-settings" role="tabpanel" aria-labelledby="t-settings">
+    <h2>Profile</h2><p>Everyone starts with $1.00. Play money only, not real.</p>
+    <div class="stats" id="stats"></div>
+    <button class="btn" id="reset">Reset to $1.00</button>
+  </section>
+</main>
+
+<div class="overlay" id="ov"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="gt">
+  <div class="head"><h2 id="gt"></h2><button class="x" id="close" aria-label="Close"><i data-lucide="x"></i></button></div>
+  <div class="chips" id="chips"></div><div class="stage" id="stage"></div><p class="hint" id="rule"></p>
+</div></div>
+
+<nav class="tabs" role="tablist" aria-label="Sections">
+  <span class="indicator" aria-hidden="true"></span>
+  <button class="tab" role="tab" id="t-home" aria-controls="p-home" aria-selected="false" tabindex="-1" aria-label="Recent" title="Recent"><i data-lucide="clock"></i></button>
+  <button class="tab" role="tab" id="t-explore" aria-controls="p-explore" aria-selected="true" aria-label="Games" title="Games"><i data-lucide="gamepad-2"></i></button>
+  <button class="tab" role="tab" id="t-saved" aria-controls="p-saved" aria-selected="false" tabindex="-1" aria-label="Wheel" title="Daily Wheel"><i data-lucide="disc-3"></i></button>
+  <button class="tab" role="tab" id="t-settings" aria-controls="p-settings" aria-selected="false" tabindex="-1" aria-label="Profile" title="Profile"><i data-lucide="user"></i></button>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.453.0/dist/umd/lucide.min.js"></script>
+<script>
+const $ = s => document.querySelector(s), wait = ms => new Promise(r => setTimeout(r, ms));
+const rnd = n => Math.floor(Math.random() * n), HOUR = 3600000;
+const fmt = c => '$' + (c / 100).toFixed(2);          // all money is stored in cents
+const fresh = () => ({ cents:100, played:0, wins:0, best:0, hist:[], spins:5, refillAt:0 });
+let S = fresh();
+try { const d = JSON.parse(localStorage.getItem('arcade2')); if (d && typeof d.cents === 'number') S = Object.assign(fresh(), d); } catch (e) {}
+const save = () => { try { localStorage.setItem('arcade2', JSON.stringify(S)); } catch (e) {} };
+const icons = () => window.lucide && lucide.createIcons();
+
+/* ---------- tabs ---------- */
+const bar = $('.tabs'), tabs = [...bar.querySelectorAll('.tab')], ind = bar.querySelector('.indicator');
+function moveIndicator() { const t = tabs.find(x => x.getAttribute('aria-selected') === 'true'); ind.style.width = t.offsetWidth + 'px'; ind.style.transform = 'translateX(' + t.offsetLeft + 'px)'; }
+function select(tab, focus) {
+  tabs.forEach(t => { const on = t === tab; t.setAttribute('aria-selected', on); t.tabIndex = on ? 0 : -1; document.getElementById(t.getAttribute('aria-controls')).classList.toggle('on', on); });
+  if (focus) tab.focus(); moveIndicator(); render();
+}
+tabs.forEach((t, i) => {
+  t.addEventListener('click', () => select(t));
+  t.addEventListener('keydown', e => {
+    const k = { ArrowRight:1, ArrowLeft:-1 }[e.key];
+    if (k) { e.preventDefault(); select(tabs[(i + k + tabs.length) % tabs.length], true); }
+    if (e.key === 'Home') select(tabs[0], true); if (e.key === 'End') select(tabs[tabs.length - 1], true);
+  });
+});
+window.addEventListener('resize', moveIndicator);
+
+/* ---------- money ---------- */
+function settle(name, bet, pay) {
+  const net = pay - bet; S.cents += pay; S.played++;
+  if (net > 0) { S.wins++; S.best = Math.max(S.best, net); }
+  S.hist.unshift({ g:name, net }); S.hist = S.hist.slice(0, 25); save(); render();
+}
+
+/* ---------- minigames ---------- */
+const games = [
+  { name:'Dodge Run', icon:'🏈', desc:'Endless run. Dodge linebackers with your finger.', full:true, rule:'Drag to run anywhere. You are paid when tackled: 0.5x at 20 yds, then +0.025x per yard (max 25x). Running upfield is faster.', mount(box, c) {
+    box.innerHTML = '<canvas class="field" width="320" height="400"></canvas><button class="btn" id="go">Snap the ball</button><div class="msg"></div>';
+    const cv = box.querySelector('canvas'), x = cv.getContext('2d'), go = box.querySelector('#go'), msg = box.querySelector('.msg');
+    let W = 320, H = 400, run = false, bet = 0, yd = 0, off = 0, last = 0, spawn = 0, lbs = [], me = { x:160, y:330 }, tgt = { x:160, y:330 };
+    let trail = [], parts = [], shake = 0, over = false;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const size = () => { W = cv.clientWidth || 320; H = cv.clientHeight || 400; cv.width = W * dpr; cv.height = H * dpr; x.setTransform(dpr, 0, 0, dpr, 0, 0); me.x = Math.min(me.x, W - 12); me.y = Math.min(me.y, H - 20); tgt.x = Math.min(tgt.x, W - 12); tgt.y = Math.min(tgt.y, H - 20); if (!run) draw(); };
+    new ResizeObserver(size).observe(cv);
+    const pt = e => { const r = cv.getBoundingClientRect(); tgt.x = Math.max(12, Math.min(W - 12, (e.clientX - r.left) / r.width * W)); tgt.y = Math.max(20, Math.min(H - 20, (e.clientY - r.top) / r.height * H)); };
+    cv.addEventListener('pointermove', pt); cv.addEventListener('pointerdown', e => { try { cv.setPointerCapture(e.pointerId); } catch (_) {} pt(e); });
+    const payFor = y => y < 20 ? 0 : Math.min(25, .5 + (y - 20) * .025);
+    const draw = () => {
+      x.save();
+      if (shake > 0) { x.translate((Math.random() - .5) * shake, (Math.random() - .5) * shake); shake *= .9; if (shake < .5) shake = 0; }
+      const sw = 60, o = off % (sw * 2); let si = 0;
+      for (let y = -2 * sw + o; y < H + sw; y += sw, si++) { x.fillStyle = si % 2 ? '#2a5a3a' : '#33683f'; x.fillRect(0, y, W, sw); }
+      x.strokeStyle = 'rgba(255,255,255,.22)'; x.lineWidth = 2;
+      for (let y = (off % 120) - 120; y < H; y += 120) { x.beginPath(); x.moveTo(0, y); x.lineTo(W, y); x.stroke(); }
+      x.strokeStyle = 'rgba(255,255,255,.14)';
+      for (let y = (off % 30) - 30; y < H; y += 30) { x.beginPath(); x.moveTo(W * .33, y); x.lineTo(W * .33 + 8, y); x.moveTo(W * .67, y); x.lineTo(W * .67 - 8, y); x.stroke(); }
+      x.fillStyle = 'rgba(255,255,255,.7)'; x.fillRect(6, 0, 3, H); x.fillRect(W - 9, 0, 3, H);
+      trail.forEach(t => { x.globalAlpha = t.a * .35; x.fillStyle = '#9fe8ff'; x.beginPath(); x.arc(t.x, t.y, 9 * t.a + 2, 0, 7); x.fill(); t.a -= .06; t.y += .8; });
+      trail = trail.filter(t => t.a > 0); x.globalAlpha = 1;
+      let near = 999;
+      lbs.forEach(l => {
+        near = Math.min(near, Math.hypot(l.x - me.x, l.y - me.y));
+        x.fillStyle = 'rgba(0,0,0,.3)'; x.beginPath(); x.ellipse(l.x + 2, l.y + 7, 14, 7, 0, 0, 7); x.fill();
+        if (!l.tired) { x.shadowColor = '#ff3b3b'; x.shadowBlur = 14; }
+        const g = x.createRadialGradient(l.x - 4, l.y - 4, 2, l.x, l.y, 15); g.addColorStop(0, l.tired ? '#9a6a68' : '#ff6a5e'); g.addColorStop(1, l.tired ? '#5b3b3a' : '#a02323');
+        x.fillStyle = g; x.beginPath(); x.arc(l.x, l.y, 14, 0, 7); x.fill(); x.shadowBlur = 0;
+        x.fillStyle = 'rgba(255,255,255,.85)'; x.font = '700 11px system-ui'; x.textAlign = 'center'; x.fillText(l.n, l.x, l.y + 4);
+      });
+      x.shadowColor = '#7be3ff'; x.shadowBlur = 18; const pg = x.createRadialGradient(me.x - 3, me.y - 3, 1, me.x, me.y, 13); pg.addColorStop(0, '#fff'); pg.addColorStop(1, '#8fd8f0');
+      x.fillStyle = pg; x.beginPath(); x.arc(me.x, me.y, 12, 0, 7); x.fill(); x.shadowBlur = 0;
+      x.fillStyle = '#7a4b2a'; x.beginPath(); x.ellipse(me.x, me.y - 1, 6, 3.5, -.6, 0, 7); x.fill();
+      parts.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += .15; p.a -= .02; x.globalAlpha = Math.max(0, p.a); x.fillStyle = p.c; x.fillRect(p.x, p.y, 4, 4); });
+      parts = parts.filter(p => p.a > 0); x.globalAlpha = 1;
+      const v = x.createRadialGradient(W / 2, H / 2, H * .25, W / 2, H / 2, H * .75); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.55)'); x.fillStyle = v; x.fillRect(-12, -12, W + 24, H + 24);
+      if (run && near < 80) { x.strokeStyle = 'rgba(255,60,60,' + (.6 * (1 - near / 80)).toFixed(2) + ')'; x.lineWidth = 8; x.strokeRect(0, 0, W, H); }
+      x.restore();
+      x.fillStyle = 'rgba(15,16,18,.65)'; x.beginPath(); if (x.roundRect) x.roundRect(12, 12, 150, 48, 14); else x.rect(12, 12, 150, 48); x.fill();
+      x.textAlign = 'left'; x.fillStyle = '#fff'; x.font = '800 22px system-ui'; x.fillText(Math.floor(yd), 24, 38); const yw = x.measureText(Math.floor(yd)).width;
+      x.font = '600 11px system-ui'; x.fillStyle = '#9da0a6'; x.fillText('YDS', 28 + yw, 38);
+      x.font = '600 12px system-ui'; x.fillStyle = payFor(yd) ? '#7fd69a' : '#9da0a6'; x.fillText(payFor(yd).toFixed(2) + 'x \u00b7 ' + fmt(Math.floor(bet * payFor(yd))), 24, 54);
+      if (!run && !over && yd === 0) { x.textAlign = 'center'; x.fillStyle = 'rgba(255,255,255,.9)'; x.font = '700 18px system-ui'; x.fillText('Snap the ball, then drag to dodge', W / 2, H / 2); }
+      if (over) { x.fillStyle = 'rgba(0,0,0,.5)'; x.fillRect(0, 0, W, H); x.textAlign = 'center'; x.fillStyle = '#fff'; x.font = '800 36px system-ui'; x.fillText('TACKLED', W / 2, H / 2 - 6); x.font = '500 15px system-ui'; x.fillStyle = '#cfd2d8'; x.fillText(Math.floor(yd) + ' yards', W / 2, H / 2 + 22); }
+    };
+    const finish = (td) => {
+      run = false; over = true; shake = 16;
+      for (let i = 0; i < 40; i++) parts.push({ x:me.x, y:me.y, vx:(Math.random() - .5) * 7, vy:(Math.random() - .7) * 6, a:1, c:i % 2 ? '#ff6a5e' : '#ffd36b' });
+      let fr = 0; const fxl = () => { draw(); if (++fr < 50 && box.isConnected) requestAnimationFrame(fxl); }; fxl();
+      const pay = Math.floor(bet * payFor(yd)), b = bet, y = Math.floor(yd);
+      msg.textContent = 'Tackled after ' + y + ' yards. ' + (pay >= b ? '+' + fmt(pay - b) : '−' + fmt(b - pay)); go.disabled = false; go.textContent = 'Play again'; c.end(b, pay);
+    };
+    const frame = now => {
+      if (!box.isConnected) { if (run) { run = false; c.end(bet, 0); } return; }
+      const dt = Math.min(.05, (now - last) / 1000); last = now;
+      const px = me.x, py = me.y, dx = tgt.x - me.x, dy = tgt.y - me.y, d = Math.hypot(dx, dy), st = 270 * dt;
+      if (d <= st) { me.x = tgt.x; me.y = tgt.y; } else { me.x += dx / d * st; me.y += dy / d * st; }
+      const mvx = (me.x - px) / Math.max(dt, .001), mvy = (me.y - py) / Math.max(dt, .001); trail.push({ x:me.x, y:me.y, a:1 });
+      yd += dt * (4 + (1 - me.y / H) * 4); off += dt * 60; spawn -= dt;
+      if (spawn <= 0) { spawn = Math.max(.1, .75 - yd / 140);
+      for (let i = 0, n = 1 + (Math.random() < Math.min(.6, yd / 200) ? 1 + rnd(2) : 0); i < n; i++) { const side = Math.random() < .35; lbs.push({ x:side ? (Math.random() < .5 ? -14 : W + 14) : Math.random() * W, y:side ? Math.random() * H * .8 : -14, vx:0, vy:0, n:10 + rnd(80), k:.85 + Math.random() * .4, fade:Math.random() < .3, pred:Math.random() < .5, age:0, life:6 + Math.random() * 8 }); } }
+      const cap = Math.min(330, 130 + yd * 1.2);
+      for (const l of lbs) {
+        l.age += dt; const lead = l.pred ? .45 : 0, ax = me.x + mvx * lead - l.x, ay = me.y + mvy * lead - l.y, m = Math.hypot(ax, ay) || 1;
+        if (!l.tired && (l.age > l.life || (l.fade && l.y > me.y + 30))) l.tired = true;
+        if (l.tired) { const f = Math.max(0, 1 - 1.6 * dt); l.vx *= f; l.vy *= f; }
+        else {
+          const acc = (230 + yd * 1.5) * l.k; l.vx += ax / m * acc * dt; l.vy += ay / m * acc * dt;
+          for (const o of lbs) { if (o === l) continue; const sx = l.x - o.x, sy = l.y - o.y, sd = Math.hypot(sx, sy); if (sd > 0 && sd < 34) { l.vx += sx / sd * 260 * dt; l.vy += sy / sd * 260 * dt; } }
+        }
+        const s = Math.hypot(l.vx, l.vy), lc = cap * l.k; if (s > lc) { l.vx *= lc / s; l.vy *= lc / s; }
+        l.x += l.vx * dt; l.y += (l.vy + 50) * dt;
+        if (Math.hypot(me.x - l.x, me.y - l.y) < 24) { draw(); return finish(false); }
+      }
+      lbs = lbs.filter(l => l.y < H + 60 && l.x > -120 && l.x < W + 120);
+      draw(); requestAnimationFrame(frame);
+    };
+    go.onclick = () => {
+      bet = c.take(); if (!bet) return; over = false; parts = []; trail = []; shake = 0; yd = 0; off = 0; lbs = []; spawn = .5; me = { x:W / 2, y:H - 70 }; tgt = { x:W / 2, y:H - 70 }; msg.textContent = 'Drag to dodge!'; go.disabled = true; go.textContent = 'Running…';
+      run = true; last = performance.now(); requestAnimationFrame(frame);
+    };
+    size();
+  }},
+  { name:'Mines', icon:'💣', desc:'Dodge 3 bombs, cash out any time.', rule:'Every safe tile raises your payout. Hit a bomb and you lose the bet.', mount(box, c) {
+    box.innerHTML = '<div class="mgrid"></div><button class="btn" id="go">Start</button><div class="msg"></div>';
+    const grid = box.querySelector('.mgrid'), go = box.querySelector('#go'), msg = box.querySelector('.msg'); let st = null;
+    const mult = k => { let m = .94; for (let i = 0; i < k; i++) m *= (16 - i) / (13 - i); return m; };
+    const tiles = Array.from({ length:16 }, (_, i) => { const t = document.createElement('button'); t.className = 'tile'; t.disabled = true; t.setAttribute('aria-label', 'Tile ' + (i + 1)); grid.append(t); return t; });
+    const finish = (pay, text, show) => { if (show) tiles.forEach((t, i) => { t.disabled = true; if (!t.textContent) { t.textContent = st.bombs.has(i) ? '💣' : ''; if (st.bombs.has(i)) t.classList.add('bomb'); } }); tiles.forEach(t => t.disabled = true); msg.textContent = text; const bet = st.bet; st = null; go.textContent = 'Play again'; go.disabled = false; c.end(bet, pay); };
+    tiles.forEach((t, i) => t.onclick = () => {
+      if (!st) return;
+      if (st.bombs.has(i)) { t.textContent = '💣'; t.classList.add('bomb'); return finish(0, 'Boom! −' + fmt(st.bet), true); }
+      t.textContent = '💎'; t.classList.add('safe'); t.disabled = true; st.open++;
+      const pay = Math.floor(st.bet * mult(st.open)); go.textContent = 'Cash out ' + fmt(pay); go.disabled = false;
+      if (st.open === 13) finish(pay, 'Cleared the board! +' + fmt(pay - st.bet), true);
+    });
+    go.onclick = () => {
+      if (!st) {
+        const bet = c.take(); if (!bet) return; const bombs = new Set(); while (bombs.size < 3) bombs.add(rnd(16));
+        st = { bet, bombs, open:0 }; tiles.forEach(t => { t.textContent = ''; t.className = 'tile'; t.disabled = false; }); go.textContent = 'Pick a tile'; go.disabled = true; msg.textContent = '';
+      } else if (st.open > 0) { const pay = Math.floor(st.bet * mult(st.open)); finish(pay, 'Cashed out +' + fmt(pay - st.bet), true); }
+    };
+  }},
+  { name:'Higher or Lower', icon:'🃏', desc:'Build a streak, then cash out.', rule:'Guess the next card. Ties lose. Longer streaks and riskier guesses pay more.', mount(box, c) {
+    box.innerHTML = '<div class="face">?</div><div class="btns"><button class="btn" id="hi">Higher</button><button class="btn" id="lo">Lower</button></div><button class="btn" id="go">Start</button><div class="msg"></div>';
+    const face = box.querySelector('.face'), hi = box.querySelector('#hi'), lo = box.querySelector('#lo'), go = box.querySelector('#go'), msg = box.querySelector('.msg');
+    const nm = n => ['A','2','3','4','5','6','7','8','9','10','J','Q','K'][n - 1]; let st = null;
+    const ui = () => { hi.disabled = !st || st.cur === 13; lo.disabled = !st || st.cur === 1; go.disabled = !!st && st.streak === 0; go.textContent = st ? (st.streak ? 'Cash out ' + fmt(Math.floor(st.bet * st.m)) : 'Make a guess') : 'Start'; };
+    const guess = up => {
+      const n = rnd(13) + 1, p = up ? (13 - st.cur) / 13 : (st.cur - 1) / 13, ok = up ? n > st.cur : n < st.cur; face.textContent = nm(n);
+      if (ok) { st.m *= .95 / p; st.cur = n; st.streak++; msg.textContent = 'Streak ' + st.streak + ' · x' + st.m.toFixed(2); ui(); }
+      else { const b = st.bet; st = null; msg.textContent = 'Wrong! −' + fmt(b); ui(); c.end(b, 0); }
+    };
+    hi.onclick = () => guess(true); lo.onclick = () => guess(false);
+    go.onclick = () => {
+      if (!st) { const bet = c.take(); if (!bet) return; st = { bet, cur:rnd(13) + 1, m:1, streak:0 }; face.textContent = nm(st.cur); msg.textContent = ''; }
+      else { const pay = Math.floor(st.bet * st.m), b = st.bet; st = null; msg.textContent = 'Cashed out +' + fmt(pay - b); c.end(b, pay); }
+      ui();
+    };
+    ui();
+  }},
+  { name:'Stop the Bar', icon:'🎯', desc:'Time it and land on the center.', rule:'Center: 3x. Close: 1.5x. Near: 0.5x. Miss: lose the bet.', mount(box, c) {
+    box.innerHTML = '<div class="track"><div class="zone" style="width:48%;background:#3a3c40"></div><div class="zone" style="width:28%;background:#4d6b58"></div><div class="zone" style="width:12%;background:#7fd69a"></div><div class="mark"></div></div><button class="btn" id="go">Start</button><div class="msg"></div>';
+    const mk = box.querySelector('.mark'), go = box.querySelector('#go'), msg = box.querySelector('.msg'); let run = false, pos = 50, raf, bet = 0, t0 = 0;
+    const loop = now => { const ph = ((now - t0) / 1000 * 1.1) % 2; pos = ph < 1 ? ph * 100 : (2 - ph) * 100; mk.style.left = pos + '%'; if (run) raf = requestAnimationFrame(loop); };
+    go.onclick = () => {
+      if (!run) { bet = c.take(); if (!bet) return; run = true; msg.textContent = ''; go.textContent = 'STOP'; t0 = performance.now(); raf = requestAnimationFrame(loop); }
+      else { run = false; cancelAnimationFrame(raf); const d = Math.abs(pos - 50), m = d <= 6 ? 3 : d <= 14 ? 1.5 : d <= 24 ? .5 : 0, pay = Math.floor(bet * m);
+        msg.textContent = (m === 3 ? 'Perfect! ' : m ? 'Not bad. ' : 'Missed. ') + (pay >= bet ? '+' + fmt(pay - bet) : '−' + fmt(bet - pay)); go.textContent = 'Play again'; c.end(bet, pay); }
+    };
+  }},
+  { name:'Cup Shuffle', icon:'🥤', desc:'Follow the ball. Win 2.8x.', rule:'Watch where the ball goes, then pick the right cup.', mount(box, c) {
+    box.innerHTML = '<div class="cups"></div><button class="btn" id="go">Start</button><div class="msg"></div>';
+    const cups = box.querySelector('.cups'), go = box.querySelector('#go'), msg = box.querySelector('.msg'); let slot = [0, 1, 2], pick = false, ball = 0, bet = 0;
+    const cws = [0, 1, 2].map(i => { const w = document.createElement('button'); w.className = 'cw'; w.innerHTML = '<span class="ball">🟡</span><span class="cup">🥤</span>'; w.setAttribute('aria-label', 'Cup ' + (i + 1)); cups.append(w); return w; });
+    const place = () => cws.forEach((w, i) => w.style.transform = 'translateX(' + slot[i] * 96 + 'px)'); place();
+    cws.forEach((w, i) => w.onclick = () => { if (!pick) return; pick = false; w.classList.add('lift'); cws[ball].classList.add('lift', 'show'); const win = i === ball; msg.textContent = win ? 'Found it! +' + fmt(Math.floor(bet * 2.8) - bet) : 'Wrong cup. −' + fmt(bet); go.disabled = false; go.textContent = 'Play again'; c.end(bet, win ? Math.floor(bet * 2.8) : 0); });
+    go.onclick = async () => {
+      bet = c.take(); if (!bet) return; go.disabled = true; msg.textContent = 'Watch closely…'; cws.forEach(w => w.classList.remove('lift', 'show')); ball = rnd(3);
+      cws[ball].classList.add('lift', 'show'); await wait(1100); cws[ball].classList.remove('lift', 'show');
+      for (let k = 0; k < 9; k++) { const a = rnd(3); let b = rnd(3); while (b === a) b = rnd(3); [slot[a], slot[b]] = [slot[b], slot[a]]; place(); await wait(380); }
+      msg.textContent = 'Pick a cup!'; pick = true;
+    };
+  }},
+  { name:'Lucky Slots', icon:'🎰', desc:'Match symbols to win big.', rule:'Two match: bet back. Three match: 10x. Three 💎: 25x.', mount(box, c) {
+    const sym = ['🍒','🍋','🔔','⭐','💎'];
+    box.innerHTML = '<div class="reels"><div class="reel">🍒</div><div class="reel">🍋</div><div class="reel">🔔</div></div><button class="btn" id="spin">Spin</button><div class="msg"></div>';
+    const rs = [...box.querySelectorAll('.reel')], msg = box.querySelector('.msg'), btn = box.querySelector('#spin');
+    btn.onclick = async () => {
+      const bet = c.take(); if (!bet) return; btn.disabled = true; msg.textContent = ''; const out = rs.map(() => sym[rnd(5)]);
+      for (let i = 0; i < 3; i++) { for (let k = 0; k < 7 + i * 4; k++) { rs[i].textContent = sym[rnd(5)]; await wait(70); } rs[i].textContent = out[i]; }
+      const n = new Set(out).size; let pay = 0; if (n === 1) pay = bet * (out[0] === '💎' ? 25 : 10); else if (n === 2) pay = bet;
+      msg.textContent = pay > bet ? 'Jackpot! +' + fmt(pay - bet) : pay === bet ? 'Push. Bet returned.' : 'No match. −' + fmt(bet); btn.disabled = false; c.end(bet, pay);
+    };
+  }}
+];
+
+function openGame(g) {
+  const c = { bet:10,
+    take() { if (S.cents < this.bet) { $('#rule').textContent = 'Not enough money. Spin the wheel for more!'; return 0; } S.cents -= this.bet; save(); render(); $('#rule').textContent = g.rule; return this.bet; },
+    end(bet, pay) { settle(g.name, bet, pay); } };
+  $('#gt').textContent = g.name; $('#rule').textContent = g.rule;
+  $('#chips').innerHTML = [5, 10, 25, 50].map(v => '<button class="chip' + (v === c.bet ? ' on' : '') + '" data-v="' + v + '">' + fmt(v) + '</button>').join('');
+  $('#chips').onclick = e => { const v = e.target.dataset.v; if (!v) return; c.bet = +v; [...$('#chips').children].forEach(x => x.classList.toggle('on', x.dataset.v === v)); };
+  $('#ov').classList.toggle('full', !!g.full); $('#ov').classList.add('on'); g.mount($('#stage'), c); $('#close').focus();
+  if (g.full && $('#ov').requestFullscreen) $('#ov').requestFullscreen().catch(() => {});
+}
+const closeGame = () => { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); $('#ov').classList.remove('on', 'full'); $('#stage').innerHTML = ''; };
+$('#close').onclick = closeGame; $('#ov').addEventListener('click', e => { if (e.target.id === 'ov') closeGame(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeGame(); });
+
+/* ---------- wheel ---------- */
+const SEG = [0, 10, 0, 20, 10, 30, 0, 50], WEIGHTS = [[0, 40], [10, 30], [20, 17], [30, 9], [50, 4]]; let rot = 0, spinning = false;
+$('#wheel').style.background = 'conic-gradient(' + SEG.map((v, i) => (i % 2 ? '#3a3c40' : '#2d2e31') + ' ' + i * 45 + 'deg ' + (i + 1) * 45 + 'deg').join(',') + ')';
+$('#wheel').innerHTML = SEG.map((v, i) => '<span class="lab" style="transform:translate(-50%,-50%) rotate(' + (i + .5) * 45 + 'deg) translateY(-92px)">' + (v ? '$' + (v / 100).toFixed(2) : '$0') + '</span>').join('');
+$('#spinw').onclick = async () => {
+  if (spinning || S.spins < 1) return; spinning = true; $('#spinw').disabled = true; $('#wmsg').textContent = '';
+  S.spins--; if (!S.refillAt) S.refillAt = Date.now() + 3 * HOUR; save(); render();
+  let r = rnd(100), prize = 0; for (const [v, w] of WEIGHTS) { if (r < w) { prize = v; break; } r -= w; }
+  const idxs = SEG.map((v, i) => v === prize ? i : -1).filter(i => i >= 0), idx = idxs[rnd(idxs.length)];
+  rot = Math.ceil(rot / 360) * 360 + 360 * 5 - ((idx + .5) * 45 + (Math.random() - .5) * 28);
+  $('#wheel').style.transform = 'rotate(' + rot + 'deg)'; await wait(4200);
+  S.cents += prize; S.hist.unshift({ g:'Daily Wheel', net:prize }); S.hist = S.hist.slice(0, 25); save(); spinning = false;
+  $('#wmsg').textContent = prize ? 'You won ' + fmt(prize) + '!' : 'No prize this time.'; render();
+};
+
+/* ---------- views ---------- */
+function clock() {
+  if (S.refillAt && Date.now() >= S.refillAt) { S.spins = 5; S.refillAt = 0; save(); }
+  let t = 'Spins left: ' + S.spins + '/5';
+  if (S.refillAt) { const s = Math.max(0, Math.ceil((S.refillAt - Date.now()) / 1000)), p = n => String(n).padStart(2, '0'); t += ' · 5 new spins in ' + Math.floor(s / 3600) + ':' + p(Math.floor(s % 3600 / 60)) + ':' + p(s % 60); }
+  $('#spinfo').textContent = t; $('#spinw').disabled = spinning || S.spins < 1; $('#bal').textContent = fmt(S.cents);
+}
+const BN = { 'Dodge Run':['linear-gradient(135deg,#238a4a,#0b3a1f)', 'Fullscreen · Endless'], 'Mines':['linear-gradient(135deg,#5b2f85,#1d1230)', 'Cash out any time'], 'Higher or Lower':['linear-gradient(135deg,#8a2f45,#2b1018)', 'Build a streak'], 'Stop the Bar':['linear-gradient(135deg,#9a6f1c,#33250a)', 'Skill timing'], 'Cup Shuffle':['linear-gradient(135deg,#1f7288,#0a2b34)', 'Win 2.8x'], 'Lucky Slots':['linear-gradient(135deg,#8a1f78,#2a0a27)', 'Up to 25x'] };
+function render() {
+  const q = $('#q').value.trim().toLowerCase(), list = games.filter(g => g.name.toLowerCase().includes(q));
+  $('#games').innerHTML = list.length ? list.map((g, i) => { const b = BN[g.name] || ['var(--card)', 'Play']; return '<button class="card banner' + (i === 0 && !q ? ' feat' : '') + '" data-n="' + g.name + '" style="background:' + b[0] + '"><span class="big">' + g.icon + '</span><b>' + g.name + '</b><small>' + g.desc + '</small><span class="tag">' + b[1] + '</span></button>'; }).join('') : '<p>No games found.</p>';
+  $('#hist').innerHTML = S.hist.length ? S.hist.map(h => '<div class="row"><span>' + h.g + '</span><span class="' + (h.net > 0 ? 'good' : h.net < 0 ? 'bad' : '') + '">' + (h.net > 0 ? '+' : h.net < 0 ? '−' : '') + fmt(Math.abs(h.net)) + '</span></div>').join('') : '<p style="text-align:center">No Results Yet</p>';
+  const rate = S.played ? Math.round(S.wins / S.played * 100) + '%' : '–';
+  $('#stats').innerHTML = [['Balance', fmt(S.cents)], ['Games played', S.played], ['Win rate', rate], ['Biggest win', fmt(S.best)]].map(s => '<div class="stat"><b>' + s[1] + '</b><span>' + s[0] + '</span></div>').join('');
+  clock(); icons();
+}
+$('#q').addEventListener('input', render);
+$('#games').addEventListener('click', e => { const b = e.target.closest('.card'); if (b) openGame(games.find(g => g.name === b.dataset.n)); });
+$('#reset').onclick = () => { if (confirm('Reset your balance to $1.00 and clear stats?')) { S = fresh(); save(); render(); } };
+setInterval(clock, 1000);
+icons(); render(); moveIndicator();
+</script>
+</body>
+</html>
