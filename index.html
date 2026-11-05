@@ -57,7 +57,7 @@ if (!window.THREE) { panel.innerHTML = '<h1>Dodge Run</h1><p>The 3D engine could
 let best = 0; try { best = +localStorage.getItem('dodgeBest') || 0; } catch (e) {}
 $('#best').textContent = best;
 
-const FX = 26, BG = 0x0d1712;
+const FX = 60, BG = 0x0d1712;
 const scene = new THREE.Scene(); scene.background = new THREE.Color(BG); scene.fog = new THREE.Fog(BG, 45, 95);
 const cam = new THREE.PerspectiveCamera(60, 1, .1, 120), renderer = new THREE.WebGLRenderer({ antialias:true });
 renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); app.prepend(renderer.domElement);
